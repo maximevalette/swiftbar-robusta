@@ -25,9 +25,12 @@ jobs:
     - name: Set up Python
       run: uv python install ${{ matrix.python-version }}
     
+    - name: Create virtual environment
+      run: uv venv
+    
     - name: Install dependencies
       run: |
-        uv pip install --system pytest pytest-mock pytest-cov requests pyyaml python-dateutil
+        uv pip install pytest pytest-mock pytest-cov requests pyyaml python-dateutil
     
     - name: Run tests with coverage
       run: |
@@ -65,9 +68,12 @@ jobs:
     - name: Set up Python
       run: uv python install 3.11
     
+    - name: Create virtual environment
+      run: uv venv
+    
     - name: Install linting tools
       run: |
-        uv pip install --system ruff mypy types-requests types-PyYAML
+        uv pip install ruff mypy types-requests types-PyYAML
     
     - name: Run ruff
       run: uv run ruff check .
@@ -87,9 +93,12 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v5
     
+    - name: Create virtual environment
+      run: uv venv
+    
     - name: Install security tools
       run: |
-        uv pip install --system bandit safety
+        uv pip install bandit safety
     
     - name: Run bandit
       run: uv run bandit -r robusta.5m.py -f json -o bandit-report.json
