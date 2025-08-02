@@ -254,9 +254,9 @@ class RobustaAPI:
                             f"🔍 DEBUG: First alert sample: {json.dumps(alerts_data[0], indent=2)}"
                         )
                         # Show priority distribution
-                        priority_counts = {}
-                        unresolved_priority_counts = {}
-                        resolved_priority_counts = {}
+                        priority_counts: Dict[str, int] = {}
+                        unresolved_priority_counts: Dict[str, int] = {}
+                        resolved_priority_counts: Dict[str, int] = {}
                         for ad in alerts_data:
                             p = ad.get("priority", "unknown")
                             priority_counts[p] = priority_counts.get(p, 0) + 1
@@ -376,7 +376,7 @@ class RobustaAPI:
                                 url += "?dates=21600"
                                 url += "&grouping=%22ALERT_NAME%22"
                                 url += f"&events=%5B{alert_name_encoded}%5D"
-                                alert._robusta_url = url
+                                setattr(alert, "_robusta_url", url)
                             all_alerts.append(alert)
                         except Exception as e:
                             if self.debug:
@@ -485,7 +485,7 @@ class SwiftBarRenderer:
             return
 
         # Count alerts by priority
-        priority_counts = {}
+        priority_counts: Dict[str, int] = {}
         for alert in alerts:
             priority = alert.priority
             priority_counts[priority] = priority_counts.get(priority, 0) + 1
@@ -711,7 +711,7 @@ def load_config() -> tuple[List[ClusterConfig], DisplayConfig]:
         os.environ.get("VAR_CONFIG_PATH", "~/.config/swiftbar/robusta.yml")
     ).expanduser()
 
-    default_config = {
+    default_config: Dict[str, Any] = {
         "clusters": [],
         "display": {
             "show_cluster_in_title": True,
@@ -762,11 +762,14 @@ def load_config() -> tuple[List[ClusterConfig], DisplayConfig]:
             config_data = yaml.safe_load(f) or {}
 
         # Merge with defaults
-        config_data = {**default_config, **config_data}
-        config_data["display"] = {
-            **default_config["display"],
-            **config_data.get("display", {}),
-        }
+        for key, value in default_config.items():
+            if key not in config_data:
+                config_data[key] = value
+        
+        # Merge display config
+        display_config = config_data.get("display", {})
+        config_data["display"] = default_config["display"].copy()
+        config_data["display"].update(display_config)
 
         clusters = [ClusterConfig(**cluster) for cluster in config_data["clusters"]]
         display = DisplayConfig(**config_data["display"])

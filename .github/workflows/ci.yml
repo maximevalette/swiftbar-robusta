@@ -73,7 +73,7 @@ jobs:
     
     - name: Install linting tools
       run: |
-        uv pip install ruff mypy types-requests types-PyYAML
+        uv pip install ruff mypy types-requests types-PyYAML types-python-dateutil
     
     - name: Run ruff
       run: uv run ruff check .
