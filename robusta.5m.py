@@ -765,7 +765,7 @@ def load_config() -> tuple[List[ClusterConfig], DisplayConfig]:
         for key, value in default_config.items():
             if key not in config_data:
                 config_data[key] = value
-        
+
         # Merge display config
         display_config = config_data.get("display", {})
         config_data["display"] = default_config["display"].copy()
