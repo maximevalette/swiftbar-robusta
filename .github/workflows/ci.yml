@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, macos-13]
+        python-version: ['3.10', '3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+    
+    - name: Set up Python
+      run: uv python install ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        uv pip install --system pytest pytest-mock pytest-cov
+        uv pip install --system requests pyyaml python-dateutil
+    
+    - name: Run tests with coverage
+      run: |
+        uv run pytest tests/ -v --cov=. --cov-report=xml --cov-report=term
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: Test plugin execution
+      run: |
+        # Test that the plugin can be executed
+        chmod +x robusta.5m.py
+        # Create a minimal config to prevent exit
+        mkdir -p ~/.config/swiftbar
+        echo "clusters: []" > ~/.config/swiftbar/robusta.yml
+        # Run the plugin (should show "No clusters configured")
+        ./robusta.5m.py | grep -E "(No clusters configured|:bell:)"
+    
+  lint:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+    
+    - name: Set up Python
+      run: uv python install 3.11
+    
+    - name: Install linting tools
+      run: |
+        uv pip install --system ruff mypy types-requests types-PyYAML
+    
+    - name: Run ruff
+      run: uv run ruff check .
+    
+    - name: Run ruff format check
+      run: uv run ruff format --check .
+    
+    - name: Run mypy
+      run: uv run mypy robusta.5m.py --ignore-missing-imports
+    
+  security:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+    
+    - name: Install security tools
+      run: |
+        uv pip install --system bandit safety
+    
+    - name: Run bandit
+      run: uv run bandit -r robusta.5m.py -f json -o bandit-report.json
+      continue-on-error: true
+    
+    - name: Upload bandit results
+      uses: actions/upload-artifact@v4
+      with:
+        name: bandit-results
+        path: bandit-report.json
+    
+    - name: Check dependencies for vulnerabilities
+      run: |
+        # Extract dependencies and check with safety
+        grep -E "^# dependencies" -A 10 robusta.5m.py | grep -E "^#     " | sed 's/#     //' | sed 's/,$//' | sed 's/"//g' > requirements.txt
+        uv run safety check -r requirements.txt --json
+      continue-on-error: true

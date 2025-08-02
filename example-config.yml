@@ -1,0 +1,66 @@
+# SwiftBar Robusta Plugin Configuration Example
+# Copy this file to ~/.config/swiftbar/robusta.yml and update with your credentials
+
+# List of Kubernetes clusters to monitor
+clusters:
+  # Production cluster example
+  - name: prod-cluster-1
+    # Your Robusta account ID (found in Robusta platform settings)
+    account_id: YOUR_ACCOUNT_ID_HERE
+    # API key with read permissions (create in Robusta platform → Settings → API Keys)
+    api_key: YOUR_API_KEY_HERE
+    # Robusta API endpoint (default shown, usually no need to change)
+    base_url: https://api.robusta.dev
+    # API request timeout in seconds
+    timeout: 30
+    # Optional: Your Robusta dashboard URL for direct alert links
+    # Example: https://platform.robusta.dev or your custom domain
+    dashboard_url: https://platform.robusta.dev
+    
+  # Staging cluster example
+  - name: staging-cluster
+    account_id: YOUR_ACCOUNT_ID_HERE
+    api_key: YOUR_API_KEY_HERE
+    base_url: https://api.robusta.dev
+    timeout: 30
+    
+  # Development cluster example (with custom API endpoint)
+  # - name: dev-cluster
+  #   account_id: YOUR_ACCOUNT_ID_HERE
+  #   api_key: YOUR_API_KEY_HERE
+  #   # Example of custom/on-premise Robusta instance
+  #   base_url: https://robusta.company.internal
+  #   timeout: 30
+
+# Display settings for the SwiftBar plugin
+display:
+  # Show cluster name in the menu bar title (useful for multi-cluster setups)
+  show_cluster_in_title: true
+  
+  # Display alert age (e.g., "5m", "2h", "3d")
+  show_age: true
+  
+  # Show Kubernetes namespace in alert listings
+  show_namespace: true
+  
+  # How many hours back to look for alerts
+  # Alerts older than this won't be displayed
+  stale_alert_hours: 24
+  
+  # How often to refresh data (in minutes)
+  # Note: This is informational only - actual refresh is controlled by filename
+  # (e.g., robusta.5m.py refreshes every 5 minutes)
+  refresh_interval_minutes: 5
+  
+  # Enable debug mode for troubleshooting
+  # Shows detailed API calls and responses
+  debug: false
+
+# Advanced configuration (optional)
+# notifications:
+#   # Enable/disable macOS notifications
+#   enabled: true
+#   # Only notify for certain priority levels
+#   priorities: [CRITICAL, HIGH]
+#   # Sound for notifications
+#   sound: Glass
