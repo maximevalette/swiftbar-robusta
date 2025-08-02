@@ -27,7 +27,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        uv pip install pytest pytest-mock pytest-cov requests pyyaml python-dateutil
+        uv pip install --system pytest pytest-mock pytest-cov requests pyyaml python-dateutil
     
     - name: Run tests with coverage
       run: |
@@ -67,7 +67,7 @@ jobs:
     
     - name: Install linting tools
       run: |
-        uv pip install ruff mypy types-requests types-PyYAML
+        uv pip install --system ruff mypy types-requests types-PyYAML
     
     - name: Run ruff
       run: uv run ruff check .
@@ -89,7 +89,7 @@ jobs:
     
     - name: Install security tools
       run: |
-        uv pip install bandit safety
+        uv pip install --system bandit safety
     
     - name: Run bandit
       run: uv run bandit -r robusta.5m.py -f json -o bandit-report.json
