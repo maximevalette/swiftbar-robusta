@@ -253,6 +253,8 @@ class TestRobustaAPI:
             empty_response,  # CrashLoopBackoff
             empty_response,  # JobFailure
             empty_response,  # ImagePullBackoff
+            empty_response,  # PodOOMKilled
+            empty_response,  # PodEvictedTriggered
         ]
 
         alerts = api.fetch_unresolved_alerts(hours_back=24)
