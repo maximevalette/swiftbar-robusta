@@ -242,7 +242,18 @@ class TestRobustaAPI:
         ]
         alerts_response.raise_for_status = Mock()
 
-        mock_get.side_effect = [report_response, alerts_response]
+        # Create empty responses for additional alert types
+        empty_response = Mock()
+        empty_response.json.return_value = []
+        empty_response.raise_for_status = Mock()
+        
+        mock_get.side_effect = [
+            report_response,  # Initial report fetch
+            alerts_response,  # PodCrashLooping alerts
+            empty_response,   # CrashLoopBackoff
+            empty_response,   # JobFailure
+            empty_response    # ImagePullBackoff
+        ]
 
         alerts = api.fetch_unresolved_alerts(hours_back=24)
 
