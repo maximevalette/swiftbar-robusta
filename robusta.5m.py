@@ -405,7 +405,7 @@ class RobustaAPI:
                 continue
 
         # Step 3: Fetch additional specific alert types that might not appear in the report
-        additional_alert_types = ["CrashLoopBackoff", "JobFailure", "ImagePullBackoff"]
+        additional_alert_types = ["CrashLoopBackoff", "JobFailure", "ImagePullBackoff", "PodOOMKilled", "PodEvictedTriggered"]
 
         for alert_name in additional_alert_types:
             if self.debug:
