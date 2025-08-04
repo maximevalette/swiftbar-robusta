@@ -404,6 +404,104 @@ class RobustaAPI:
                     print(f"DEBUG: Network error for {aggregation_key}: {str(e)}")
                 continue
 
+        # Step 3: Fetch additional specific alert types that might not appear in the report
+        additional_alert_types = ["CrashLoopBackoff", "JobFailure", "ImagePullBackoff"]
+
+        for alert_name in additional_alert_types:
+            if self.debug:
+                print(f"🔍 DEBUG: Fetching additional alert type '{alert_name}'")
+
+            url = f"{self.config.base_url}/api/query/alerts"
+            params = {
+                "account_id": self.config.account_id,
+                "start_ts": self._format_timestamp(start_time),
+                "end_ts": self._format_timestamp(end_time),
+                "alert_name": alert_name,
+            }
+
+            try:
+                response = self.session.get(
+                    url, params=params, timeout=self.config.timeout
+                )
+                response.raise_for_status()
+
+                alerts_data = response.json()
+
+                if self.debug:
+                    print(
+                        f"🔍 DEBUG: Response for '{alert_name}': {len(alerts_data)} alerts"
+                    )
+
+                for alert_data in alerts_data:
+                    # Only include unresolved alerts
+                    if alert_data.get("resolved_at") is None:
+                        # Add cluster info to each alert
+                        alert_data["cluster"] = self.config.name
+
+                        # Check if priority field exists, if not try common alternatives
+                        if "priority" not in alert_data:
+                            # Try common field names for priority/severity
+                            for field in [
+                                "severity",
+                                "level",
+                                "alert_severity",
+                                "alertSeverity",
+                            ]:
+                                if field in alert_data:
+                                    alert_data["priority"] = alert_data[field]
+                                    break
+                            else:
+                                # Default to LOW if no priority field found
+                                alert_data["priority"] = "LOW"
+
+                        # Normalize priority values to uppercase
+                        if "priority" in alert_data and isinstance(
+                            alert_data["priority"], str
+                        ):
+                            alert_data["priority"] = alert_data["priority"].upper()
+
+                        try:
+                            # Extract only known Alert fields to avoid TypeErrors
+                            alert_fields = {
+                                "alert_name": alert_data.get("alert_name"),
+                                "title": alert_data.get("title"),
+                                "description": alert_data.get("description"),
+                                "source": alert_data.get("source"),
+                                "priority": alert_data.get("priority"),
+                                "started_at": alert_data.get("started_at"),
+                                "resolved_at": alert_data.get("resolved_at"),
+                                "cluster": alert_data.get("cluster"),
+                                "namespace": alert_data.get("namespace"),
+                                "app": alert_data.get("app"),
+                                "kind": alert_data.get("kind"),
+                                "resource_name": alert_data.get("resource_name"),
+                                "resource_node": alert_data.get("resource_node"),
+                            }
+                            alert = Alert(**alert_fields)
+
+                            # Store Robusta URL
+                            if self.config.dashboard_url:
+                                from urllib.parse import quote
+
+                                alert_name_encoded = quote(f'"{alert.alert_name}"')
+                                url = f"{self.config.dashboard_url}/graphs"
+                                url += "?dates=21600"
+                                url += "&grouping=%22ALERT_NAME%22"
+                                url += f"&events=%5B{alert_name_encoded}%5D"
+                                setattr(alert, "_robusta_url", url)
+                            all_alerts.append(alert)
+                        except Exception as e:
+                            if self.debug:
+                                print(
+                                    f"🔍 DEBUG: Failed to create alert for {alert_name}: {str(e)}"
+                                )
+                            continue
+
+            except requests.exceptions.RequestException as e:
+                if self.debug:
+                    print(f"DEBUG: Error fetching {alert_name} alerts: {str(e)}")
+                continue
+
         if self.debug:
             print(f"🔍 DEBUG: Total unresolved alerts found: {len(all_alerts)}")
 
@@ -418,6 +516,17 @@ class RobustaAPI:
 class SwiftBarRenderer:
     def __init__(self, display_config: DisplayConfig):
         self.config = display_config
+
+    def _format_age(self, delta: timedelta) -> str:
+        """Format a timedelta as a human-readable age string"""
+        if delta.days > 0:
+            return f"{delta.days}d"
+        elif delta.seconds > 3600:
+            return f"{delta.seconds // 3600}h"
+        elif delta.seconds > 60:
+            return f"{delta.seconds // 60}m"
+        else:
+            return f"{delta.seconds}s"
 
     def _sanitize_for_menu(self, text: str) -> str:
         """Sanitize text for menu display by removing newlines and extra spaces"""
@@ -471,12 +580,46 @@ class SwiftBarRenderer:
             for priority in priority_order:
                 if priority in alerts_by_priority:
                     priority_alerts = alerts_by_priority[priority]
+                    # Get deduplicated count for this priority level
+                    deduplicated_count = len(self._get_deduplicated_alerts(priority_alerts))
                     color = COLORS.get(priority, COLORS["unknown"])
                     symbol = SYMBOLS.get(priority, SYMBOLS["unknown"])
                     print(
-                        f"{symbol} {priority} ({len(priority_alerts)}) | color={color}"
+                        f"{symbol} {priority} ({deduplicated_count}) | color={color}"
                     )
                     self._render_priority_submenu(priority_alerts)
+
+    def _get_deduplicated_alerts(self, alerts: List[Alert]) -> List[Alert]:
+        """Get deduplicated alerts by grouping similar ones"""
+        alert_groups = defaultdict(list)
+
+        for alert in alerts:
+            # For cron jobs and similar resources, extract the base name
+            resource_name = alert.resource_name or ""
+
+            # Check if this is a cron job with pattern like "cron-<name>-<id>"
+            if resource_name.startswith("cron-") and resource_name.count('-') >= 2:
+                # Extract base name
+                parts = resource_name.split('-')
+                base_parts = []
+                for part in parts:
+                    if part.isdigit() or (len(part) > 5 and any(c.isdigit() for c in part)):
+                        break
+                    base_parts.append(part)
+                base_name = '-'.join(base_parts) if base_parts else resource_name
+            else:
+                base_name = resource_name
+
+            # Create group key combining alert type, namespace, and base resource name
+            group_key = f"{alert.alert_name}|{alert.namespace}|{base_name}"
+            alert_groups[group_key].append(alert)
+
+        # Return one representative alert per group
+        deduplicated = []
+        for group_alerts in alert_groups.values():
+            deduplicated.append(group_alerts[0])  # Use first alert as representative
+
+        return deduplicated
 
     def _render_menu_bar_title(self, alerts: List[Alert]):
         """Render the menu bar title with alert count and highest priority"""
@@ -484,9 +627,12 @@ class SwiftBarRenderer:
             print(":bell:")
             return
 
-        # Count alerts by priority
+        # Get deduplicated alerts for accurate count
+        deduplicated_alerts = self._get_deduplicated_alerts(alerts)
+
+        # Count deduplicated alerts by priority
         priority_counts: Dict[str, int] = {}
-        for alert in alerts:
+        for alert in deduplicated_alerts:
             priority = alert.priority
             priority_counts[priority] = priority_counts.get(priority, 0) + 1
 
@@ -523,12 +669,136 @@ class SwiftBarRenderer:
 
     def _render_priority_submenu(self, alerts: List[Alert]):
         """Render alerts as submenu items"""
-        # Sort alerts by name only (already grouped by cluster)
-        alerts.sort(key=lambda a: a.alert_name)
+        # Group alerts by alert_name and base resource pattern
+        alert_groups = defaultdict(list)
 
-        # Show all alerts as submenu items
         for alert in alerts:
-            self._render_alert_item(alert)
+            # For cron jobs and similar resources, extract the base name
+            resource_name = alert.resource_name or ""
+
+            # Check if this is a cron job with pattern like "cron-<name>-<id>"
+            if resource_name.startswith("cron-") and resource_name.count('-') >= 2:
+                # Extract base name (e.g., "cron-bet88-kr-main" from "cron-bet88-kr-main-cronjob-29238204-46scz")
+                parts = resource_name.split('-')
+                # Find where the numeric part starts
+                base_parts = []
+                for part in parts:
+                    if part.isdigit() or (len(part) > 5 and any(c.isdigit() for c in part)):
+                        break
+                    base_parts.append(part)
+                base_name = '-'.join(base_parts) if base_parts else resource_name
+            else:
+                base_name = resource_name
+
+            # Create group key combining alert type, namespace, and base resource name
+            group_key = f"{alert.alert_name}|{alert.namespace}|{base_name}"
+            alert_groups[group_key].append(alert)
+
+        # Sort groups by alert name and resource
+        sorted_groups = sorted(alert_groups.items(), key=lambda x: x[0])
+
+        # Render each group
+        for group_key, group_alerts in sorted_groups:
+            if len(group_alerts) == 1:
+                # Single alert, render normally
+                self._render_alert_item(group_alerts[0])
+            else:
+                # Multiple alerts, render as grouped item
+                self._render_grouped_alert_item(group_key, group_alerts)
+
+    def _render_grouped_alert_item(self, group_key: str, alerts: List[Alert]):
+        """Render a group of similar alerts as a single menu item with count"""
+        # Parse group key
+        alert_name, namespace, base_resource = group_key.split('|')
+
+        # Build grouped alert title
+        parts = [self._sanitize_for_menu(alert_name)]
+
+        if self.config.show_namespace:
+            parts.append(f"{self._sanitize_for_menu(namespace)}/{self._sanitize_for_menu(base_resource)}")
+        else:
+            parts.append(self._sanitize_for_menu(base_resource))
+
+        # Add count
+        parts.append(f"(x{len(alerts)})")
+
+        if self.config.show_age:
+            # Show age range
+            ages = [alert.started_at for alert in alerts if alert.started_at]
+            if ages:
+                oldest = min(ages)
+                newest = max(ages)
+                oldest_age = self._format_age(datetime.now(timezone.utc) - parser.parse(oldest).replace(tzinfo=timezone.utc))
+                newest_age = self._format_age(datetime.now(timezone.utc) - parser.parse(newest).replace(tzinfo=timezone.utc))
+                if oldest_age == newest_age:
+                    parts.append(f"({oldest_age})")
+                else:
+                    parts.append(f"({newest_age}-{oldest_age})")
+
+        alert_line = " ".join(parts)
+
+        # Main grouped item (not clickable)
+        print(f"-- {alert_line}")
+
+        # Show individual alerts as sub-items with proper indentation
+        for alert in sorted(alerts, key=lambda a: a.resource_name):
+            # Build individual alert line
+            individual_parts = [self._sanitize_for_menu(alert.resource_name)]
+
+            if self.config.show_age:
+                individual_parts.append(f"({alert.age})")
+
+            individual_line = " ".join(individual_parts)
+
+            # Individual alert item (not clickable at top level)
+            print(f"-- {individual_line}")
+
+            # Add submenu details (matching _render_alert_item format)
+            if alert.description:
+                # Split description by sentences and display each on a new line
+                description = self._sanitize_for_menu(alert.description)
+                # Split by common sentence endings
+                sentences = re.split(r"(?<=[.!?])\s+", description)
+                for sentence in sentences:
+                    if sentence.strip():
+                        # Make the description clickable if we have a Robusta URL
+                        if alert.robusta_url:
+                            print(f"---- {sentence.strip()} | href={alert.robusta_url}")
+                        else:
+                            print(f"---- {sentence.strip()}")
+
+            print(f"---- Cluster: {self._sanitize_for_menu(alert.cluster)} | color=#898989")
+            print(f"---- Namespace: {self._sanitize_for_menu(str(alert.namespace))} | color=#898989")
+            print(f"---- App: {self._sanitize_for_menu(alert.app or 'N/A')} | color=#898989")
+            print(f"---- Resource: {self._sanitize_for_menu(alert.resource_name)} | color=#898989")
+            print(f"---- Node: {self._sanitize_for_menu(str(alert.resource_node or 'N/A'))} | color=#898989")
+            print(f"---- Started: {alert.started_at} | color=#898989")
+
+            # Create alert details for copying
+            alert_details_parts = []
+            if alert.description:
+                alert_details_parts.append(f"Description: {alert.description}")
+            alert_details_parts.extend([
+                f"Alert: {alert.alert_name}",
+                f"Cluster: {alert.cluster}",
+                f"Namespace: {alert.namespace}",
+                f"App: {alert.app or 'N/A'}",
+                f"Resource: {alert.resource_name}",
+                f"Node: {alert.resource_node or 'N/A'}",
+                f"Priority: {alert.priority}",
+                f"Started: {alert.started_at}",
+            ])
+
+            # Join with newlines for copying
+            alert_text = "\n".join(alert_details_parts)
+            
+            # Encode the alert text to base64 for safe passing as argument
+            encoded_text = base64.b64encode(alert_text.encode()).decode()
+
+            # Add copy to clipboard option - use bash with inline command
+            print(
+                f"---- Copy Alert Details | bash=/bin/bash param1=-c param2=\"echo '{encoded_text}' | base64 -d | pbcopy\" terminal=false"
+            )
 
     def _render_alert_item(self, alert: Alert):
         """Render a single alert as a submenu item"""
@@ -591,13 +861,15 @@ class SwiftBarRenderer:
             ]
         )
 
-        # Join with newlines and encode to base64 to avoid shell escaping issues
+        # Join with newlines for copying
         alert_text = "\n".join(alert_details_parts)
+        
+        # Encode the alert text to base64 for safe passing as argument
         encoded_text = base64.b64encode(alert_text.encode()).decode()
 
-        # Add copy to clipboard option - use base64 to avoid any escaping issues
+        # Add copy to clipboard option - use bash with inline command
         print(
-            f'---- Copy Alert Details | bash="echo {encoded_text} | base64 -d | pbcopy" terminal=false'
+            f"---- Copy Alert Details | bash=/bin/bash param1=-c param2=\"echo '{encoded_text}' | base64 -d | pbcopy\" terminal=false"
         )
 
     def _render_alert_line(self, alert: Alert, indent: str = ""):
@@ -670,6 +942,7 @@ def save_state(alerts: List[Alert]):
 
     with open(state_file, "wb") as f:
         pickle.dump(state, f)
+
 
 
 def send_notification(title: str, message: str, sound: bool = True):
