@@ -581,12 +581,12 @@ class SwiftBarRenderer:
                 if priority in alerts_by_priority:
                     priority_alerts = alerts_by_priority[priority]
                     # Get deduplicated count for this priority level
-                    deduplicated_count = len(self._get_deduplicated_alerts(priority_alerts))
+                    deduplicated_count = len(
+                        self._get_deduplicated_alerts(priority_alerts)
+                    )
                     color = COLORS.get(priority, COLORS["unknown"])
                     symbol = SYMBOLS.get(priority, SYMBOLS["unknown"])
-                    print(
-                        f"{symbol} {priority} ({deduplicated_count}) | color={color}"
-                    )
+                    print(f"{symbol} {priority} ({deduplicated_count}) | color={color}")
                     self._render_priority_submenu(priority_alerts)
 
     def _get_deduplicated_alerts(self, alerts: List[Alert]) -> List[Alert]:
@@ -598,15 +598,17 @@ class SwiftBarRenderer:
             resource_name = alert.resource_name or ""
 
             # Check if this is a cron job with pattern like "cron-<name>-<id>"
-            if resource_name.startswith("cron-") and resource_name.count('-') >= 2:
+            if resource_name.startswith("cron-") and resource_name.count("-") >= 2:
                 # Extract base name
-                parts = resource_name.split('-')
+                parts = resource_name.split("-")
                 base_parts = []
                 for part in parts:
-                    if part.isdigit() or (len(part) > 5 and any(c.isdigit() for c in part)):
+                    if part.isdigit() or (
+                        len(part) > 5 and any(c.isdigit() for c in part)
+                    ):
                         break
                     base_parts.append(part)
-                base_name = '-'.join(base_parts) if base_parts else resource_name
+                base_name = "-".join(base_parts) if base_parts else resource_name
             else:
                 base_name = resource_name
 
@@ -677,16 +679,18 @@ class SwiftBarRenderer:
             resource_name = alert.resource_name or ""
 
             # Check if this is a cron job with pattern like "cron-<name>-<id>"
-            if resource_name.startswith("cron-") and resource_name.count('-') >= 2:
+            if resource_name.startswith("cron-") and resource_name.count("-") >= 2:
                 # Extract base name (e.g., "cron-bet88-kr-main" from "cron-bet88-kr-main-cronjob-29238204-46scz")
-                parts = resource_name.split('-')
+                parts = resource_name.split("-")
                 # Find where the numeric part starts
                 base_parts = []
                 for part in parts:
-                    if part.isdigit() or (len(part) > 5 and any(c.isdigit() for c in part)):
+                    if part.isdigit() or (
+                        len(part) > 5 and any(c.isdigit() for c in part)
+                    ):
                         break
                     base_parts.append(part)
-                base_name = '-'.join(base_parts) if base_parts else resource_name
+                base_name = "-".join(base_parts) if base_parts else resource_name
             else:
                 base_name = resource_name
 
@@ -709,13 +713,15 @@ class SwiftBarRenderer:
     def _render_grouped_alert_item(self, group_key: str, alerts: List[Alert]):
         """Render a group of similar alerts as a single menu item with count"""
         # Parse group key
-        alert_name, namespace, base_resource = group_key.split('|')
+        alert_name, namespace, base_resource = group_key.split("|")
 
         # Build grouped alert title
         parts = [self._sanitize_for_menu(alert_name)]
 
         if self.config.show_namespace:
-            parts.append(f"{self._sanitize_for_menu(namespace)}/{self._sanitize_for_menu(base_resource)}")
+            parts.append(
+                f"{self._sanitize_for_menu(namespace)}/{self._sanitize_for_menu(base_resource)}"
+            )
         else:
             parts.append(self._sanitize_for_menu(base_resource))
 
@@ -728,8 +734,14 @@ class SwiftBarRenderer:
             if ages:
                 oldest = min(ages)
                 newest = max(ages)
-                oldest_age = self._format_age(datetime.now(timezone.utc) - parser.parse(oldest).replace(tzinfo=timezone.utc))
-                newest_age = self._format_age(datetime.now(timezone.utc) - parser.parse(newest).replace(tzinfo=timezone.utc))
+                oldest_age = self._format_age(
+                    datetime.now(timezone.utc)
+                    - parser.parse(oldest).replace(tzinfo=timezone.utc)
+                )
+                newest_age = self._format_age(
+                    datetime.now(timezone.utc)
+                    - parser.parse(newest).replace(tzinfo=timezone.utc)
+                )
                 if oldest_age == newest_age:
                     parts.append(f"({oldest_age})")
                 else:
@@ -767,31 +779,43 @@ class SwiftBarRenderer:
                         else:
                             print(f"---- {sentence.strip()}")
 
-            print(f"---- Cluster: {self._sanitize_for_menu(alert.cluster)} | color=#898989")
-            print(f"---- Namespace: {self._sanitize_for_menu(str(alert.namespace))} | color=#898989")
-            print(f"---- App: {self._sanitize_for_menu(alert.app or 'N/A')} | color=#898989")
-            print(f"---- Resource: {self._sanitize_for_menu(alert.resource_name)} | color=#898989")
-            print(f"---- Node: {self._sanitize_for_menu(str(alert.resource_node or 'N/A'))} | color=#898989")
+            print(
+                f"---- Cluster: {self._sanitize_for_menu(alert.cluster)} | color=#898989"
+            )
+            print(
+                f"---- Namespace: {self._sanitize_for_menu(str(alert.namespace))} | color=#898989"
+            )
+            print(
+                f"---- App: {self._sanitize_for_menu(alert.app or 'N/A')} | color=#898989"
+            )
+            print(
+                f"---- Resource: {self._sanitize_for_menu(alert.resource_name)} | color=#898989"
+            )
+            print(
+                f"---- Node: {self._sanitize_for_menu(str(alert.resource_node or 'N/A'))} | color=#898989"
+            )
             print(f"---- Started: {alert.started_at} | color=#898989")
 
             # Create alert details for copying
             alert_details_parts = []
             if alert.description:
                 alert_details_parts.append(f"Description: {alert.description}")
-            alert_details_parts.extend([
-                f"Alert: {alert.alert_name}",
-                f"Cluster: {alert.cluster}",
-                f"Namespace: {alert.namespace}",
-                f"App: {alert.app or 'N/A'}",
-                f"Resource: {alert.resource_name}",
-                f"Node: {alert.resource_node or 'N/A'}",
-                f"Priority: {alert.priority}",
-                f"Started: {alert.started_at}",
-            ])
+            alert_details_parts.extend(
+                [
+                    f"Alert: {alert.alert_name}",
+                    f"Cluster: {alert.cluster}",
+                    f"Namespace: {alert.namespace}",
+                    f"App: {alert.app or 'N/A'}",
+                    f"Resource: {alert.resource_name}",
+                    f"Node: {alert.resource_node or 'N/A'}",
+                    f"Priority: {alert.priority}",
+                    f"Started: {alert.started_at}",
+                ]
+            )
 
             # Join with newlines for copying
             alert_text = "\n".join(alert_details_parts)
-            
+
             # Encode the alert text to base64 for safe passing as argument
             encoded_text = base64.b64encode(alert_text.encode()).decode()
 
@@ -863,7 +887,7 @@ class SwiftBarRenderer:
 
         # Join with newlines for copying
         alert_text = "\n".join(alert_details_parts)
-        
+
         # Encode the alert text to base64 for safe passing as argument
         encoded_text = base64.b64encode(alert_text.encode()).decode()
 
@@ -942,7 +966,6 @@ def save_state(alerts: List[Alert]):
 
     with open(state_file, "wb") as f:
         pickle.dump(state, f)
-
 
 
 def send_notification(title: str, message: str, sound: bool = True):
