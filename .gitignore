@@ -33,6 +33,7 @@ htmlcov/
 .hypothesis/
 
 # IDEs
+.claude/
 .vscode/
 .idea/
 *.swp
