@@ -114,5 +114,5 @@ jobs:
       run: |
         # Extract dependencies and check with safety
         grep -E "^# dependencies" -A 10 robusta.5m.py | grep -E "^#     " | sed 's/#     //' | sed 's/,$//' | sed 's/"//g' > requirements.txt
-        uv run safety check -r requirements.txt --json
+        uv run safety scan -r requirements.txt --json
       continue-on-error: true
