@@ -2,7 +2,7 @@
 
 A [SwiftBar](https://github.com/swiftbarapp/SwiftBar) plugin for monitoring unresolved [Robusta](https://robusta.dev) alerts across multiple Kubernetes clusters directly from your macOS menu bar.
 
-![SwiftBar Robusta Plugin Screenshot](https://github.com/user-attachments/assets/screenshot-placeholder.png)
+![SwiftBar Robusta Plugin Screenshot](screenshot.png)
 
 ## Features
 
@@ -64,7 +64,7 @@ clusters:
     base_url: https://api.robusta.dev
     timeout: 30
     dashboard_url: https://platform.robusta.dev  # Optional: for direct alert links
-    
+
   - name: staging-cluster
     account_id: YOUR_ACCOUNT_ID_2
     api_key: YOUR_API_KEY_2
