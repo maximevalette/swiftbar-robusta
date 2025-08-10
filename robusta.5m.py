@@ -599,11 +599,21 @@ class SwiftBarRenderer:
 
     def render(self, cluster_alerts: Dict[str, List[Alert]]):
         """Render the SwiftBar output"""
-        all_alerts = []
-        for alerts in cluster_alerts.values():
-            all_alerts.extend(alerts)
+        # Get hidden alert IDs
+        hidden_alert_ids = get_hidden_alert_ids()
 
-        # Render menu bar title
+        # Separate visible and hidden alerts
+        all_alerts = []
+        hidden_alerts = []
+
+        for alerts in cluster_alerts.values():
+            for alert in alerts:
+                if alert.get_unique_id() in hidden_alert_ids:
+                    hidden_alerts.append(alert)
+                else:
+                    all_alerts.append(alert)
+
+        # Render menu bar title (only count visible alerts)
         self._render_menu_bar_title(all_alerts)
 
         print("---")
@@ -611,29 +621,31 @@ class SwiftBarRenderer:
         self._render_footer()
         print("---")
 
-        if not all_alerts:
+        if not all_alerts and not hidden_alerts:
             print("No unresolved alerts")
             return
 
         # Render alerts grouped by account, then by cluster, then by priority
         priority_order = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
 
-        # Create nested structure: account -> cluster -> alerts
+        # Create nested structure: account -> cluster -> alerts (filtering hidden alerts)
         account_cluster_alerts = {}
         for account_name in sorted(cluster_alerts.keys()):
             account_alerts = cluster_alerts[account_name]
             if not account_alerts:
                 continue
 
-            # Group by actual cluster name within this account
+            # Group by actual cluster name within this account (excluding hidden alerts)
             clusters_in_account = defaultdict(list)
             for alert in account_alerts:
-                clusters_in_account[alert.cluster].append(alert)
+                if alert.get_unique_id() not in hidden_alert_ids:
+                    clusters_in_account[alert.cluster].append(alert)
 
             # Sort cluster names alphabetically
-            account_cluster_alerts[account_name] = dict(
-                sorted(clusters_in_account.items())
-            )
+            if clusters_in_account:  # Only add if there are visible alerts
+                account_cluster_alerts[account_name] = dict(
+                    sorted(clusters_in_account.items())
+                )
 
         # Render alerts
         section_idx = 0
@@ -675,6 +687,40 @@ class SwiftBarRenderer:
                             f"{symbol} {priority} ({deduplicated_count}) | color={color}"
                         )
                         self._render_priority_submenu(priority_alerts)
+
+        # Render hidden alerts section if there are any
+        if hidden_alerts:
+            if section_idx > 0:
+                print("---")
+            print(f"🙈 Hidden Alerts ({len(hidden_alerts)}) | color=#898989")
+            self._render_hidden_alerts(hidden_alerts)
+
+    def _render_hidden_alerts(self, alerts: List[Alert]):
+        """Render hidden alerts with unhide option"""
+        for alert in alerts:
+            parts = [self._sanitize_for_menu(alert.alert_name)]
+            if self.config.show_namespace:
+                parts.append(
+                    f"{self._sanitize_for_menu(str(alert.namespace))}/{self._sanitize_for_menu(alert.resource_name)}"
+                )
+            else:
+                parts.append(self._sanitize_for_menu(alert.resource_name))
+
+            priority_symbol = SYMBOLS.get(alert.priority, SYMBOLS["unknown"])
+            print(f"-- {priority_symbol} {' • '.join(parts)} | color=#898989")
+
+            # Add unhide option
+            alert_id = alert.get_unique_id()
+            escaped_id = alert_id.replace("'", "'\"'\"'")
+            script_path = os.path.abspath(__file__)
+            print(
+                f'---- Unhide Alert | bash=/usr/bin/python3 param1="{script_path}" param2=--unhide-alert param3="{escaped_id}" terminal=false refresh=true'
+            )
+
+            # Show basic details
+            print(f"---- Cluster: {alert.cluster} | color=#898989")
+            print(f"---- Priority: {alert.priority} | color=#898989")
+            print(f"---- Started: {alert.started_at} | color=#898989")
 
     def _get_deduplicated_alerts(self, alerts: List[Alert]) -> List[Alert]:
         """Get deduplicated alerts by grouping similar ones"""
@@ -911,6 +957,15 @@ class SwiftBarRenderer:
                 f"---- Copy Alert Details | bash=/bin/bash param1=-c param2=\"echo '{encoded_text}' | base64 -d | pbcopy\" terminal=false"
             )
 
+            # Add hide alert option
+            alert_id = alert.get_unique_id()
+            # Escape single quotes in alert_id for bash
+            escaped_id = alert_id.replace("'", "'\"'\"'")
+            script_path = os.path.abspath(__file__)
+            print(
+                f'---- Hide Alert | bash=/usr/bin/python3 param1="{script_path}" param2=--hide-alert param3="{escaped_id}" terminal=false refresh=true'
+            )
+
     def _render_alert_item(self, alert: Alert):
         """Render a single alert as a submenu item"""
         # Build alert title
@@ -1027,6 +1082,52 @@ def get_state_file_path() -> Path:
     return Path("~/.config/swiftbar/robusta.state").expanduser()
 
 
+def get_hidden_alert_ids() -> List[str]:
+    """Get the list of hidden alert IDs from state"""
+    state = load_state()
+    return state.get("hidden_alert_ids", [])
+
+
+def hide_alert(alert_id: str):
+    """Add an alert ID to the hidden list"""
+    state = load_state()
+    hidden_ids = state.get("hidden_alert_ids", [])
+    if alert_id not in hidden_ids:
+        hidden_ids.append(alert_id)
+
+    # Preserve current alerts if they exist
+    current_alerts = []
+    if "alerts" in state:
+        for alert_dict in state["alerts"].values():
+            try:
+                current_alerts.append(Alert(**alert_dict))
+            except:
+                pass
+
+    save_state(current_alerts, hidden_ids)
+    print(f"Alert hidden")
+
+
+def unhide_alert(alert_id: str):
+    """Remove an alert ID from the hidden list"""
+    state = load_state()
+    hidden_ids = state.get("hidden_alert_ids", [])
+    if alert_id in hidden_ids:
+        hidden_ids.remove(alert_id)
+
+    # Preserve current alerts if they exist
+    current_alerts = []
+    if "alerts" in state:
+        for alert_dict in state["alerts"].values():
+            try:
+                current_alerts.append(Alert(**alert_dict))
+            except:
+                pass
+
+    save_state(current_alerts, hidden_ids)
+    print(f"Alert unhidden")
+
+
 def load_state() -> Dict[str, Any]:
     """Load the previous state from file"""
     state_file = get_state_file_path()
@@ -1040,8 +1141,8 @@ def load_state() -> Dict[str, Any]:
     return {}
 
 
-def save_state(alerts: List[Alert]):
-    """Save current alerts to state file"""
+def save_state(alerts: List[Alert], hidden_alert_ids: List[str] = None):
+    """Save current alerts and hidden alert IDs to state file"""
     state_file = get_state_file_path()
     state_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1049,6 +1150,7 @@ def save_state(alerts: List[Alert]):
     state = {
         "alerts": {alert.get_unique_id(): asdict(alert) for alert in alerts},
         "last_update": datetime.now(timezone.utc).isoformat(),
+        "hidden_alert_ids": hidden_alert_ids or [],
     }
 
     with open(state_file, "wb") as f:
@@ -1173,6 +1275,15 @@ def load_config() -> tuple[List[ClusterConfig], DisplayConfig]:
 
 def main():
     """Main execution function"""
+    # Handle command-line arguments for hide/unhide actions
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--hide-alert" and len(sys.argv) > 2:
+            hide_alert(sys.argv[2])
+            sys.exit(0)
+        elif sys.argv[1] == "--unhide-alert" and len(sys.argv) > 2:
+            unhide_alert(sys.argv[2])
+            sys.exit(0)
+
     try:
         clusters_config, display_config = load_config()
 
@@ -1254,8 +1365,9 @@ def main():
             message = "Resolved: " + ", ".join(message_parts)
             send_notification("Robusta Alert Resolved", message, sound=False)
 
-        # Save current state
-        save_state(all_current_alerts)
+        # Save current state with hidden alerts
+        hidden_alert_ids = get_hidden_alert_ids()
+        save_state(all_current_alerts, hidden_alert_ids)
 
         # Render output
         renderer = SwiftBarRenderer(display_config)

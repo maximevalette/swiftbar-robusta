@@ -8,11 +8,14 @@ A [SwiftBar](https://github.com/swiftbarapp/SwiftBar) plugin for monitoring unre
 
 - 🔔 Real-time monitoring of unresolved Kubernetes alerts
 - 🎯 Priority-based alert grouping (Critical, High, Medium, Low, Info)
-- 🏢 Multi-cluster support
+- 🏢 Multi-cluster support with automatic Kubernetes cluster detection
 - 📊 Alert count in menu bar with visual indicators
 - ⏱️ Alert age tracking
 - 🔗 Direct links to Robusta dashboard
 - 📋 Copy alert details to clipboard
+- 🙈 Hide/unhide alerts to manage noise
+- 📁 Organized display by account and cluster (alphabetically sorted)
+- 🔄 Smart alert deduplication for similar alerts (e.g., cron jobs)
 - 🔔 macOS notifications for new and resolved alerts
 - 🔄 Configurable refresh intervals
 
@@ -130,6 +133,37 @@ The plugin uses different icons based on the highest priority alert:
 - ⚠️ Yellow triangle: High priority alerts (no critical)
 - 🔔 Bell with badge: Medium/Low/Info alerts only
 - 🔔 Bell: No alerts
+
+## Alert Management
+
+### Hiding Alerts
+
+You can hide alerts to reduce noise from known issues:
+
+1. Click on any alert to expand its details
+2. Select "Hide Alert" from the submenu
+3. The alert moves to the "🙈 Hidden Alerts" section at the bottom of the menu
+4. Hidden alerts are excluded from the menu bar count and notifications
+
+### Unhiding Alerts
+
+To restore a hidden alert:
+
+1. Navigate to the "🙈 Hidden Alerts" section
+2. Click on the hidden alert
+3. Select "Unhide Alert" to restore it to the main list
+
+Hidden alerts are persisted in `~/.config/swiftbar/robusta.state` and survive plugin refreshes.
+
+## Alert Organization
+
+Alerts are organized hierarchically:
+
+1. **By Account**: First level grouping by your configured account names
+2. **By Cluster**: Actual Kubernetes cluster names (automatically detected from alert data)
+3. **By Priority**: Within each cluster, alerts are grouped by priority level
+
+When an account name differs from the cluster name, it displays as "account → cluster" for clarity.
 
 ## Troubleshooting
 

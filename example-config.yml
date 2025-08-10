@@ -2,9 +2,11 @@
 # Copy this file to ~/.config/swiftbar/robusta.yml and update with your credentials
 
 # List of Kubernetes clusters to monitor
+# Note: The 'name' field is your account/environment name (e.g., "production", "staging")
+# The actual Kubernetes cluster names are automatically detected from alert data
 clusters:
-  # Production cluster example
-  - name: prod-cluster-1
+  # Production account example (may contain multiple K8s clusters)
+  - name: production
     # Your Robusta account ID (found in Robusta platform settings)
     account_id: YOUR_ACCOUNT_ID_HERE
     # API key with read permissions (create in Robusta platform → Settings → API Keys)
@@ -64,3 +66,18 @@ display:
 #   priorities: [CRITICAL, HIGH]
 #   # Sound for notifications
 #   sound: Glass
+
+# State file location (automatically created)
+# Contains:
+# - Previous alert state for change detection
+# - Hidden alert IDs
+# Default: ~/.config/swiftbar/robusta.state
+
+# Alert Organization:
+# Alerts are displayed hierarchically:
+# 1. By Account (from config 'name' field)
+# 2. By Kubernetes Cluster (auto-detected from alerts)
+# 3. By Priority (Critical, High, Medium, Low, Info)
+# 
+# Similar alerts (e.g., multiple cron job failures) are automatically
+# grouped together with a count indicator (x3, x5, etc.)
