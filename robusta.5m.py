@@ -1101,11 +1101,11 @@ def hide_alert(alert_id: str):
         for alert_dict in state["alerts"].values():
             try:
                 current_alerts.append(Alert(**alert_dict))
-            except:
+            except (TypeError, ValueError):
                 pass
 
     save_state(current_alerts, hidden_ids)
-    print(f"Alert hidden")
+    print("Alert hidden")
 
 
 def unhide_alert(alert_id: str):
@@ -1121,11 +1121,11 @@ def unhide_alert(alert_id: str):
         for alert_dict in state["alerts"].values():
             try:
                 current_alerts.append(Alert(**alert_dict))
-            except:
+            except (TypeError, ValueError):
                 pass
 
     save_state(current_alerts, hidden_ids)
-    print(f"Alert unhidden")
+    print("Alert unhidden")
 
 
 def load_state() -> Dict[str, Any]:

@@ -469,18 +469,20 @@ class TestHiddenAlerts:
 
     def test_hide_alert(self):
         """Test hiding an alert."""
-        with patch.object(robusta_plugin, 'load_state') as mock_load_state, \
-             patch.object(robusta_plugin, 'save_state') as mock_save_state:
+        with (
+            patch.object(robusta_plugin, "load_state") as mock_load_state,
+            patch.object(robusta_plugin, "save_state") as mock_save_state,
+        ):
             # Setup
             mock_load_state.return_value = {
                 "alerts": {},
                 "hidden_alert_ids": [],
             }
-            
+
             # Hide an alert
             alert_id = "test:alert1:ns1:res1:2025-01-15T10:00:00Z"
             hide_alert(alert_id)
-            
+
             # Verify save_state was called with the hidden alert ID
             mock_save_state.assert_called_once()
             args = mock_save_state.call_args[0]
@@ -489,18 +491,20 @@ class TestHiddenAlerts:
 
     def test_unhide_alert(self):
         """Test unhiding an alert."""
-        with patch.object(robusta_plugin, 'load_state') as mock_load_state, \
-             patch.object(robusta_plugin, 'save_state') as mock_save_state:
+        with (
+            patch.object(robusta_plugin, "load_state") as mock_load_state,
+            patch.object(robusta_plugin, "save_state") as mock_save_state,
+        ):
             # Setup
             alert_id = "test:alert1:ns1:res1:2025-01-15T10:00:00Z"
             mock_load_state.return_value = {
                 "alerts": {},
                 "hidden_alert_ids": [alert_id],
             }
-            
+
             # Unhide the alert
             unhide_alert(alert_id)
-            
+
             # Verify save_state was called without the hidden alert ID
             mock_save_state.assert_called_once()
             args = mock_save_state.call_args[0]
@@ -509,23 +513,23 @@ class TestHiddenAlerts:
 
     def test_get_hidden_alert_ids(self):
         """Test getting hidden alert IDs."""
-        with patch.object(robusta_plugin, 'load_state') as mock_load_state:
+        with patch.object(robusta_plugin, "load_state") as mock_load_state:
             hidden_ids = ["alert1", "alert2", "alert3"]
             mock_load_state.return_value = {
                 "alerts": {},
                 "hidden_alert_ids": hidden_ids,
             }
-            
+
             result = get_hidden_alert_ids()
             assert result == hidden_ids
 
     def test_get_hidden_alert_ids_empty(self):
         """Test getting hidden alert IDs when none exist."""
-        with patch.object(robusta_plugin, 'load_state') as mock_load_state:
+        with patch.object(robusta_plugin, "load_state") as mock_load_state:
             mock_load_state.return_value = {
                 "alerts": {},
             }
-            
+
             result = get_hidden_alert_ids()
             assert result == []
 
