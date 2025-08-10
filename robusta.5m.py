@@ -281,8 +281,24 @@ class RobustaAPI:
                 for alert_data in alerts_data:
                     # Only include unresolved alerts
                     if alert_data.get("resolved_at") is None:
-                        # Add cluster info to each alert
-                        alert_data["cluster"] = self.config.name
+                        # Get actual cluster name from alert data, fallback to config name
+                        # Check common field names for cluster information
+                        cluster_name = None
+                        for field in ["cluster", "cluster_name", "kubernetes_cluster", "k8s_cluster"]:
+                            if field in alert_data and alert_data[field]:
+                                cluster_name = alert_data[field]
+                                if self.debug:
+                                    print(f"🔍 DEBUG: Found cluster name '{cluster_name}' in field '{field}'")
+                                break
+                        
+                        # If no cluster field found in alert data, use the config name
+                        if not cluster_name:
+                            cluster_name = self.config.name
+                            if self.debug:
+                                print(f"🔍 DEBUG: No cluster field found in alert data, using config name '{cluster_name}'")
+                                print(f"🔍 DEBUG: Available fields: {list(alert_data.keys())}")
+                            
+                        alert_data["cluster"] = cluster_name
 
                         # Debug: Show raw priority data before processing
                         if self.debug:
@@ -363,7 +379,7 @@ class RobustaAPI:
                             alert = Alert(**alert_fields)
                             if self.debug:
                                 print(
-                                    f"🔍 DEBUG: Alert created with final priority: {alert.priority}"
+                                    f"🔍 DEBUG: Alert created with final priority: {alert.priority}, cluster: {alert.cluster}"
                                 )
                             # Set the robusta URL if dashboard_url is configured
                             if self.config.dashboard_url:
@@ -441,8 +457,24 @@ class RobustaAPI:
                 for alert_data in alerts_data:
                     # Only include unresolved alerts
                     if alert_data.get("resolved_at") is None:
-                        # Add cluster info to each alert
-                        alert_data["cluster"] = self.config.name
+                        # Get actual cluster name from alert data, fallback to config name
+                        # Check common field names for cluster information
+                        cluster_name = None
+                        for field in ["cluster", "cluster_name", "kubernetes_cluster", "k8s_cluster"]:
+                            if field in alert_data and alert_data[field]:
+                                cluster_name = alert_data[field]
+                                if self.debug:
+                                    print(f"🔍 DEBUG: Found cluster name '{cluster_name}' in field '{field}'")
+                                break
+                        
+                        # If no cluster field found in alert data, use the config name
+                        if not cluster_name:
+                            cluster_name = self.config.name
+                            if self.debug:
+                                print(f"🔍 DEBUG: No cluster field found in alert data, using config name '{cluster_name}'")
+                                print(f"🔍 DEBUG: Available fields: {list(alert_data.keys())}")
+                            
+                        alert_data["cluster"] = cluster_name
 
                         # Check if priority field exists, if not try common alternatives
                         if "priority" not in alert_data:
@@ -1110,6 +1142,11 @@ def main():
             alerts = api.fetch_unresolved_alerts(
                 hours_back=display_config.stale_alert_hours
             )
+            # Debug: Verify cluster assignment
+            if display_config.debug and alerts:
+                print(f"🔍 DEBUG: Fetched {len(alerts)} alerts from cluster '{cluster_config.name}'")
+                for alert in alerts[:2]:  # Show first 2 alerts
+                    print(f"🔍 DEBUG:   Alert '{alert.alert_name}' has cluster='{alert.cluster}'")
             cluster_alerts[cluster_config.name] = alerts
             all_current_alerts.extend(alerts)
 
