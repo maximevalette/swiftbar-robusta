@@ -615,39 +615,66 @@ class SwiftBarRenderer:
             print("No unresolved alerts")
             return
 
-        # Render alerts grouped by cluster, then by priority
+        # Render alerts grouped by account, then by cluster, then by priority
         priority_order = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
-        cluster_names = sorted(cluster_alerts.keys())
 
-        for idx, cluster_name in enumerate(cluster_names):
-            alerts = cluster_alerts[cluster_name]
-            if not alerts:
+        # Create nested structure: account -> cluster -> alerts
+        account_cluster_alerts = {}
+        for account_name in sorted(cluster_alerts.keys()):
+            account_alerts = cluster_alerts[account_name]
+            if not account_alerts:
                 continue
 
-            # Add separator between clusters (but not before the first one)
-            if idx > 0:
-                print("---")
+            # Group by actual cluster name within this account
+            clusters_in_account = defaultdict(list)
+            for alert in account_alerts:
+                clusters_in_account[alert.cluster].append(alert)
 
-            # Cluster name
-            print(f"{cluster_name}")
+            # Sort cluster names alphabetically
+            account_cluster_alerts[account_name] = dict(
+                sorted(clusters_in_account.items())
+            )
 
-            # Group alerts by priority for this cluster
-            alerts_by_priority = defaultdict(list)
-            for alert in alerts:
-                alerts_by_priority[alert.priority].append(alert)
+        # Render alerts
+        section_idx = 0
+        for account_name in sorted(account_cluster_alerts.keys()):
+            clusters_dict = account_cluster_alerts[account_name]
 
-            # Render each priority level for this cluster
-            for priority in priority_order:
-                if priority in alerts_by_priority:
-                    priority_alerts = alerts_by_priority[priority]
-                    # Get deduplicated count for this priority level
-                    deduplicated_count = len(
-                        self._get_deduplicated_alerts(priority_alerts)
-                    )
-                    color = COLORS.get(priority, COLORS["unknown"])
-                    symbol = SYMBOLS.get(priority, SYMBOLS["unknown"])
-                    print(f"{symbol} {priority} ({deduplicated_count}) | color={color}")
-                    self._render_priority_submenu(priority_alerts)
+            for cluster_name in sorted(clusters_dict.keys()):
+                alerts = clusters_dict[cluster_name]
+                if not alerts:
+                    continue
+
+                # Add separator between sections (but not before the first one)
+                if section_idx > 0:
+                    print("---")
+                section_idx += 1
+
+                # Show account and cluster name
+                if account_name != cluster_name:
+                    print(f"{account_name} → {cluster_name}")
+                else:
+                    print(f"{cluster_name}")
+
+                # Group alerts by priority for this cluster
+                alerts_by_priority = defaultdict(list)
+                for alert in alerts:
+                    alerts_by_priority[alert.priority].append(alert)
+
+                # Render each priority level for this cluster
+                for priority in priority_order:
+                    if priority in alerts_by_priority:
+                        priority_alerts = alerts_by_priority[priority]
+                        # Get deduplicated count for this priority level
+                        deduplicated_count = len(
+                            self._get_deduplicated_alerts(priority_alerts)
+                        )
+                        color = COLORS.get(priority, COLORS["unknown"])
+                        symbol = SYMBOLS.get(priority, SYMBOLS["unknown"])
+                        print(
+                            f"{symbol} {priority} ({deduplicated_count}) | color={color}"
+                        )
+                        self._render_priority_submenu(priority_alerts)
 
     def _get_deduplicated_alerts(self, alerts: List[Alert]) -> List[Alert]:
         """Get deduplicated alerts by grouping similar ones"""
