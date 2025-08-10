@@ -714,7 +714,7 @@ class SwiftBarRenderer:
             escaped_id = alert_id.replace("'", "'\"'\"'")
             script_path = os.path.abspath(__file__)
             print(
-                f'---- Unhide Alert | bash=/usr/bin/python3 param1="{script_path}" param2=--unhide-alert param3="{escaped_id}" terminal=false refresh=true'
+                f'-- Unhide Alert | bash=/usr/bin/python3 param1="{script_path}" param2=--unhide-alert param3="{escaped_id}" terminal=false refresh=true'
             )
 
             # Show basic details
@@ -954,7 +954,7 @@ class SwiftBarRenderer:
 
             # Add copy to clipboard option - use bash with inline command
             print(
-                f"---- Copy Alert Details | bash=/bin/bash param1=-c param2=\"echo '{encoded_text}' | base64 -d | pbcopy\" terminal=false"
+                f"-- Copy Alert Details | bash=/bin/bash param1=-c param2=\"echo '{encoded_text}' | base64 -d | pbcopy\" terminal=false"
             )
 
             # Add hide alert option
@@ -963,7 +963,7 @@ class SwiftBarRenderer:
             escaped_id = alert_id.replace("'", "'\"'\"'")
             script_path = os.path.abspath(__file__)
             print(
-                f'---- Hide Alert | bash=/usr/bin/python3 param1="{script_path}" param2=--hide-alert param3="{escaped_id}" terminal=false refresh=true'
+                f'-- Hide Alert | bash=/usr/bin/python3 param1="{script_path}" param2=--hide-alert param3="{escaped_id}" terminal=false refresh=true'
             )
 
     def _render_alert_item(self, alert: Alert):
@@ -1035,7 +1035,7 @@ class SwiftBarRenderer:
 
         # Add copy to clipboard option - use bash with inline command
         print(
-            f"---- Copy Alert Details | bash=/bin/bash param1=-c param2=\"echo '{encoded_text}' | base64 -d | pbcopy\" terminal=false"
+            f"-- Copy Alert Details | bash=/bin/bash param1=-c param2=\"echo '{encoded_text}' | base64 -d | pbcopy\" terminal=false"
         )
 
     def _render_alert_line(self, alert: Alert, indent: str = ""):
