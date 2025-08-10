@@ -284,20 +284,31 @@ class RobustaAPI:
                         # Get actual cluster name from alert data, fallback to config name
                         # Check common field names for cluster information
                         cluster_name = None
-                        for field in ["cluster", "cluster_name", "kubernetes_cluster", "k8s_cluster"]:
+                        for field in [
+                            "cluster",
+                            "cluster_name",
+                            "kubernetes_cluster",
+                            "k8s_cluster",
+                        ]:
                             if field in alert_data and alert_data[field]:
                                 cluster_name = alert_data[field]
                                 if self.debug:
-                                    print(f"🔍 DEBUG: Found cluster name '{cluster_name}' in field '{field}'")
+                                    print(
+                                        f"🔍 DEBUG: Found cluster name '{cluster_name}' in field '{field}'"
+                                    )
                                 break
-                        
+
                         # If no cluster field found in alert data, use the config name
                         if not cluster_name:
                             cluster_name = self.config.name
                             if self.debug:
-                                print(f"🔍 DEBUG: No cluster field found in alert data, using config name '{cluster_name}'")
-                                print(f"🔍 DEBUG: Available fields: {list(alert_data.keys())}")
-                            
+                                print(
+                                    f"🔍 DEBUG: No cluster field found in alert data, using config name '{cluster_name}'"
+                                )
+                                print(
+                                    f"🔍 DEBUG: Available fields: {list(alert_data.keys())}"
+                                )
+
                         alert_data["cluster"] = cluster_name
 
                         # Debug: Show raw priority data before processing
@@ -460,20 +471,31 @@ class RobustaAPI:
                         # Get actual cluster name from alert data, fallback to config name
                         # Check common field names for cluster information
                         cluster_name = None
-                        for field in ["cluster", "cluster_name", "kubernetes_cluster", "k8s_cluster"]:
+                        for field in [
+                            "cluster",
+                            "cluster_name",
+                            "kubernetes_cluster",
+                            "k8s_cluster",
+                        ]:
                             if field in alert_data and alert_data[field]:
                                 cluster_name = alert_data[field]
                                 if self.debug:
-                                    print(f"🔍 DEBUG: Found cluster name '{cluster_name}' in field '{field}'")
+                                    print(
+                                        f"🔍 DEBUG: Found cluster name '{cluster_name}' in field '{field}'"
+                                    )
                                 break
-                        
+
                         # If no cluster field found in alert data, use the config name
                         if not cluster_name:
                             cluster_name = self.config.name
                             if self.debug:
-                                print(f"🔍 DEBUG: No cluster field found in alert data, using config name '{cluster_name}'")
-                                print(f"🔍 DEBUG: Available fields: {list(alert_data.keys())}")
-                            
+                                print(
+                                    f"🔍 DEBUG: No cluster field found in alert data, using config name '{cluster_name}'"
+                                )
+                                print(
+                                    f"🔍 DEBUG: Available fields: {list(alert_data.keys())}"
+                                )
+
                         alert_data["cluster"] = cluster_name
 
                         # Check if priority field exists, if not try common alternatives
@@ -1144,9 +1166,13 @@ def main():
             )
             # Debug: Verify cluster assignment
             if display_config.debug and alerts:
-                print(f"🔍 DEBUG: Fetched {len(alerts)} alerts from cluster '{cluster_config.name}'")
+                print(
+                    f"🔍 DEBUG: Fetched {len(alerts)} alerts from cluster '{cluster_config.name}'"
+                )
                 for alert in alerts[:2]:  # Show first 2 alerts
-                    print(f"🔍 DEBUG:   Alert '{alert.alert_name}' has cluster='{alert.cluster}'")
+                    print(
+                        f"🔍 DEBUG:   Alert '{alert.alert_name}' has cluster='{alert.cluster}'"
+                    )
             cluster_alerts[cluster_config.name] = alerts
             all_current_alerts.extend(alerts)
 
