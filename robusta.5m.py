@@ -1141,7 +1141,7 @@ def load_state() -> Dict[str, Any]:
     return {}
 
 
-def save_state(alerts: List[Alert], hidden_alert_ids: List[str] = None):
+def save_state(alerts: List[Alert], hidden_alert_ids: Optional[List[str]] = None):
     """Save current alerts and hidden alert IDs to state file"""
     state_file = get_state_file_path()
     state_file.parent.mkdir(parents=True, exist_ok=True)
